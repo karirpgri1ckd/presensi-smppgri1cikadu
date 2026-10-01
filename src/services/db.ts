@@ -114,14 +114,14 @@ export const INITIAL_TEACHERS: TeacherUser[] = [
     username: 'suryadi',
     password: 'edudigital',
     role: 'guru',
-    mapel: 'Pendidikan Pancasila',
+    mapel: 'Pendidikan Pancasila & PKN',
     waliKelas: '9A',
     nomorHp: '085212587750',
     status: 'Aktif',
     penugasanMapel: [
-      { id: 'ASGN_SURYADI_1', mapel: 'Pendidikan Pancasila', kelas: ['7A', '7B', '8A', '8B', '9A', '9B', 'KELAS IX-A'], bebanJam: 18 },
+      { id: 'ASGN_SURYADI_1', mapel: 'Pendidikan Pancasila & PKN', kelas: ['9A', '9B'], bebanJam: 6 },
     ],
-    totalJamMengajar: 18,
+    totalJamMengajar: 6,
   },
   {
     id: 'T1',
@@ -751,6 +751,40 @@ export class DatabaseService {
         snap.forEach((docSnap) => {
           teachers.push(docSnap.data() as TeacherUser);
         });
+
+        // Ensure Suryadi is updated with PKN classes 9A & 9B and waliKelas 9A
+        const suryadiIdx = teachers.findIndex((t) => t.id === 'T_SURYADI' || t.username.toLowerCase() === 'suryadi');
+        if (suryadiIdx >= 0) {
+          const s = teachers[suryadiIdx];
+          const hasOldClasses = s.penugasanMapel?.some((p) => p.kelas.includes('7A') || p.kelas.includes('8A'));
+          if (hasOldClasses || !s.waliKelas || !s.penugasanMapel || s.penugasanMapel.length === 0) {
+            const updatedSuryadi: TeacherUser = {
+              ...s,
+              mapel: 'Pendidikan Pancasila & PKN',
+              waliKelas: '9A',
+              penugasanMapel: [
+                { id: 'ASGN_SURYADI_1', mapel: 'Pendidikan Pancasila & PKN', kelas: ['9A', '9B'], bebanJam: 6 },
+              ],
+              totalJamMengajar: 6,
+            };
+            teachers[suryadiIdx] = updatedSuryadi;
+            if (db) {
+              const docRef = doc(db, 'guru_users', updatedSuryadi.id);
+              setDoc(docRef, cleanData(updatedSuryadi)).catch(() => {});
+            }
+          }
+        } else {
+          // If Suryadi doesn't exist in Firestore collection yet, add him
+          const initialSuryadi = INITIAL_TEACHERS.find((t) => t.id === 'T_SURYADI');
+          if (initialSuryadi) {
+            teachers.unshift(initialSuryadi);
+            if (db) {
+              const docRef = doc(db, 'guru_users', initialSuryadi.id);
+              setDoc(docRef, cleanData(initialSuryadi)).catch(() => {});
+            }
+          }
+        }
+
         setLocal('teachers', teachers);
         return teachers;
       } else {

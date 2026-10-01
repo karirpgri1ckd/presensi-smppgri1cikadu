@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   X, 
   CheckCircle, 
@@ -14,9 +14,13 @@ import {
   ShieldCheck,
   Eye,
   Trash2,
-  MessageSquare
+  MessageSquare,
+  Sparkles,
+  GraduationCap
 } from 'lucide-react';
 import { LeaveRequest, LeaveRequestStatus } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { filterLeaveRequestsForTeacher, isTeacherWaliKelas } from '../utils/teacherFilter';
 
 interface LeaveApprovalModalProps {
   isOpen: boolean;
@@ -35,15 +39,23 @@ export const LeaveApprovalModal: React.FC<LeaveApprovalModalProps> = ({
   onDeleteRequest,
   currentUserName,
 }) => {
+  const { user, actingAsPiket } = useAuth();
+  const isTeacher = user?.role === 'guru' && !actingAsPiket;
+
   const [activeFilter, setActiveFilter] = useState<'Semua' | LeaveRequestStatus>('Menunggu');
   const [searchTerm, setSearchTerm] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [actionNotes, setActionNotes] = useState<Record<string, string>>({});
   const [processingId, setProcessingId] = useState<string | null>(null);
 
+  // Scoped requests for teacher
+  const scopedRequests = useMemo(() => {
+    return filterLeaveRequestsForTeacher(requests, user, actingAsPiket);
+  }, [requests, user, actingAsPiket]);
+
   if (!isOpen) return null;
 
-  const filteredRequests = requests.filter((r) => {
+  const filteredRequests = scopedRequests.filter((r) => {
     const matchesFilter = activeFilter === 'Semua' || r.statusPengajuan === activeFilter;
     const matchesSearch = 
       r.nama.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -53,7 +65,7 @@ export const LeaveApprovalModal: React.FC<LeaveApprovalModalProps> = ({
     return matchesFilter && matchesSearch;
   });
 
-  const pendingCount = requests.filter((r) => r.statusPengajuan === 'Menunggu').length;
+  const pendingCount = scopedRequests.filter((r) => r.statusPengajuan === 'Menunggu').length;
 
   const handleApprove = async (req: LeaveRequest) => {
     const note = actionNotes[req.id] || 'Surat keterangan telah diverifikasi dan disetujui.';

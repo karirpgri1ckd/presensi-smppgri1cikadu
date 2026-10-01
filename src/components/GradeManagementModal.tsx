@@ -11,9 +11,13 @@ import {
   BookOpen, 
   CheckCircle, 
   User, 
-  Filter
+  Filter,
+  Sparkles,
+  GraduationCap
 } from 'lucide-react';
 import { Student, StudentGradeItem } from '../types';
+import { useAuth } from '../context/AuthContext';
+import { getTeacherAccessibleClasses, isClassMatch, isTeacherWaliKelas } from '../utils/teacherFilter';
 
 interface GradeManagementModalProps {
   isOpen: boolean;
@@ -27,18 +31,20 @@ interface GradeManagementModalProps {
 }
 
 const DEFAULT_MAPEL_LIST = [
+  'Pendidikan Pancasila & PKN',
+  'Pendidikan Pancasila dan Kewarganegaraan (PPKn)',
   'Matematika',
   'Ilmu Pengetahuan Alam (IPA)',
   'Bahasa Indonesia',
   'Bahasa Inggris',
   'Pendidikan Agama Islam (PAI)',
-  'Pendidikan Pancasila & Kewarganegaraan (PPKn)',
   'Ilmu Pengetahuan Sosial (IPS)',
   'Seni Budaya',
   'Pendidikan Jasmani & Olahraga (PJOK)',
   'Informatika',
   'Prakarya & Kewirausahaan',
   'Bahasa Sunda (Mulok)',
+  'Bahasa Arab (Mulok)',
 ];
 
 export const GradeManagementModal: React.FC<GradeManagementModalProps> = ({
@@ -51,9 +57,25 @@ export const GradeManagementModal: React.FC<GradeManagementModalProps> = ({
   currentTeacherName,
   defaultMapel,
 }) => {
-  const [selectedClass, setSelectedClass] = useState<string>('7A');
+  const { user, actingAsPiket } = useAuth();
+  const isTeacher = user?.role === 'guru' && !actingAsPiket;
+
+  // Teacher classes
+  const teacherClasses = React.useMemo(() => {
+    return isTeacher ? getTeacherAccessibleClasses(user) : [];
+  }, [isTeacher, user]);
+
+  // Classes list
+  const classes = React.useMemo(() => {
+    if (isTeacher && teacherClasses.length > 0) {
+      return teacherClasses;
+    }
+    return Array.from(new Set(students.map((s) => s.kelas))).sort();
+  }, [isTeacher, teacherClasses, students]);
+
+  const [selectedClass, setSelectedClass] = useState<string>(classes[0] || '9A');
   const [selectedStudentNisn, setSelectedStudentNisn] = useState<string>('');
-  const [mapel, setMapel] = useState<string>(defaultMapel || 'Matematika');
+  const [mapel, setMapel] = useState<string>(user?.mapel || defaultMapel || 'Pendidikan Pancasila & PKN');
   const [jenisPenilaian, setJenisPenilaian] = useState<StudentGradeItem['jenisPenilaian']>('Tugas');
   const [namaPenilaian, setNamaPenilaian] = useState<string>('');
   const [nilai, setNilai] = useState<number>(85);
@@ -63,9 +85,8 @@ export const GradeManagementModal: React.FC<GradeManagementModalProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
-  // Classes list
-  const classes = Array.from(new Set(students.map((s) => s.kelas))).sort();
-  const studentsInClass = students.filter((s) => s.kelas === selectedClass);
+  // Scoped students in class
+  const studentsInClass = students.filter((s) => isClassMatch(s.kelas, selectedClass));
 
   // Set default student if class changes
   React.useEffect(() => {
@@ -73,6 +94,13 @@ export const GradeManagementModal: React.FC<GradeManagementModalProps> = ({
       setSelectedStudentNisn(studentsInClass[0].nisn);
     }
   }, [selectedClass, studentsInClass, selectedStudentNisn]);
+
+  // Sync selectedClass if not in allowed classes
+  React.useEffect(() => {
+    if (classes.length > 0 && !classes.some((c) => isClassMatch(c, selectedClass))) {
+      setSelectedClass(classes[0]);
+    }
+  }, [classes, selectedClass]);
 
   if (!isOpen) return null;
 

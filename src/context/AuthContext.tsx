@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { AuthUser, TeacherUser } from '../types';
+import { AuthUser, TeacherUser, UserRole } from '../types';
 import { DatabaseService, INITIAL_TEACHERS } from '../services/db';
 
 interface LoginResult {
@@ -10,6 +10,10 @@ interface LoginResult {
 interface AuthContextType {
   user: AuthUser | null;
   teachers: TeacherUser[];
+  actingAsPiket: boolean;
+  setActingAsPiket: (val: boolean) => void;
+  toggleActingAsPiket: () => void;
+  effectiveRole: UserRole | 'public';
   login: (username: string, pass: string) => Promise<LoginResult>;
   logout: () => void;
   refreshTeachers: () => Promise<void>;
@@ -18,6 +22,10 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
   user: null,
   teachers: INITIAL_TEACHERS,
+  actingAsPiket: false,
+  setActingAsPiket: () => {},
+  toggleActingAsPiket: () => {},
+  effectiveRole: 'public',
   login: async () => ({ success: false }),
   logout: () => {},
   refreshTeachers: async () => {},
@@ -35,11 +43,56 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   });
 
+  const [actingAsPiket, setActingAsPiketState] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('presensi_guru_acting_as_piket') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const setActingAsPiket = useCallback((val: boolean) => {
+    setActingAsPiketState(val);
+    try {
+      localStorage.setItem('presensi_guru_acting_as_piket', String(val));
+    } catch {}
+  }, []);
+
+  const toggleActingAsPiket = useCallback(() => {
+    setActingAsPiketState((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('presensi_guru_acting_as_piket', String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const effectiveRole: UserRole | 'public' = user 
+    ? (user.role === 'guru' && actingAsPiket ? 'piket' : user.role) 
+    : 'public';
+
   const refreshTeachers = useCallback(async () => {
     try {
       const list = await DatabaseService.getTeachers();
       if (list && list.length > 0) {
         setTeachers(list);
+        setUser((currentUser) => {
+          if (!currentUser || currentUser.role !== 'guru') return currentUser;
+          const found = list.find(
+            (t) => t.id === currentUser.id || t.username.toLowerCase() === currentUser.username.toLowerCase()
+          );
+          if (found) {
+            return {
+              ...currentUser,
+              mapel: found.mapel,
+              penugasanMapel: found.penugasanMapel || [],
+              waliKelas: found.waliKelas,
+              nama: found.nama,
+            };
+          }
+          return currentUser;
+        });
       }
     } catch (err) {
       console.warn('Failed to load teachers in AuthContext', err);
@@ -173,10 +226,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const logout = () => {
     setUser(null);
+    setActingAsPiket(false);
   };
 
   return (
-    <AuthContext.Provider value={{ user, teachers, login, logout, refreshTeachers }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      teachers, 
+      actingAsPiket, 
+      setActingAsPiket, 
+      toggleActingAsPiket, 
+      effectiveRole, 
+      login, 
+      logout, 
+      refreshTeachers 
+    }}>
       {children}
     </AuthContext.Provider>
   );

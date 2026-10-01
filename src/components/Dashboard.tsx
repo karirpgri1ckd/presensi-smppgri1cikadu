@@ -30,6 +30,12 @@ import { generateDailyAttendancePdf } from '../utils/exportPdf';
 import { useAuth } from '../context/AuthContext';
 import { ShieldCheck, UserCheck, GraduationCap, ArrowLeft, Sparkles } from 'lucide-react';
 import { SchoolLogo } from '../assets/schoolLogo';
+import { 
+  filterStudentsForTeacher, 
+  filterRecordsForTeacher, 
+  getTeacherAccessibleClasses, 
+  isClassMatch 
+} from '../utils/teacherFilter';
 
 interface DashboardProps {
   students: Student[];
@@ -58,7 +64,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
   onOpenLogin,
   setActiveTab,
 }) => {
-  const { user } = useAuth();
+  const { user, actingAsPiket } = useAuth();
+  const isTeacher = user?.role === 'guru' && !actingAsPiket;
+
   const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [selectedSession, setSelectedSession] = useState<AttendanceSession>(currentSession);
   const [selectedClass, setSelectedClass] = useState<string>('Semua');
@@ -77,19 +85,30 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [tempStatus, setTempStatus] = useState<AttendanceStatus>('Hadir');
   const [tempNote, setTempNote] = useState<string>('');
 
-  const canManage = user?.role === 'admin' || user?.role === 'piket';
+  const canManage = user?.role === 'admin' || user?.role === 'piket' || (user?.role === 'guru' && actingAsPiket);
+
+  // Scoped students and records based on role
+  const scopedStudents = React.useMemo(() => {
+    return filterStudentsForTeacher(students, user, actingAsPiket);
+  }, [students, user, actingAsPiket]);
+
+  const scopedRecords = React.useMemo(() => {
+    return filterRecordsForTeacher(records, user, actingAsPiket);
+  }, [records, user, actingAsPiket]);
 
   // Filter records for selected date & session (Operasional Presensi Apel Pagi & Siang)
-  const dateSessionRecords = records.filter(
+  const dateSessionRecords = scopedRecords.filter(
     (r) => r.tanggal === selectedDate && r.sesi === selectedSession && (r.kategori === 'APEL' || !r.kategori)
   );
 
-  // Distinct classes
-  const classesList = Array.from(new Set(students.map((s) => s.kelas))).sort();
+  // Distinct classes based on scoped students
+  const classesList = React.useMemo(() => {
+    return Array.from(new Set(scopedStudents.map((s) => s.kelas))).sort();
+  }, [scopedStudents]);
 
   // Filtered by class and status and search
   const displayedRecords = dateSessionRecords.filter((r) => {
-    if (selectedClass !== 'Semua' && r.kelas !== selectedClass) return false;
+    if (selectedClass !== 'Semua' && !isClassMatch(r.kelas, selectedClass)) return false;
     if (statusFilter !== 'Semua' && r.status !== statusFilter) return false;
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -100,24 +119,24 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Calculate high-level metrics
   const targetStudents = selectedClass === 'Semua' 
-    ? students 
-    : students.filter((s) => s.kelas === selectedClass);
+    ? scopedStudents 
+    : scopedStudents.filter((s) => isClassMatch(s.kelas, selectedClass));
 
   const totalSiswa = targetStudents.length;
   const countHadir = dateSessionRecords.filter(
-    (r) => r.status === 'Hadir' && (selectedClass === 'Semua' || r.kelas === selectedClass)
+    (r) => r.status === 'Hadir' && (selectedClass === 'Semua' || isClassMatch(r.kelas, selectedClass))
   ).length;
   const countTerlambat = dateSessionRecords.filter(
-    (r) => r.status === 'Terlambat' && (selectedClass === 'Semua' || r.kelas === selectedClass)
+    (r) => r.status === 'Terlambat' && (selectedClass === 'Semua' || isClassMatch(r.kelas, selectedClass))
   ).length;
   const countIzin = dateSessionRecords.filter(
-    (r) => r.status === 'Izin' && (selectedClass === 'Semua' || r.kelas === selectedClass)
+    (r) => r.status === 'Izin' && (selectedClass === 'Semua' || isClassMatch(r.kelas, selectedClass))
   ).length;
   const countSakit = dateSessionRecords.filter(
-    (r) => r.status === 'Sakit' && (selectedClass === 'Semua' || r.kelas === selectedClass)
+    (r) => r.status === 'Sakit' && (selectedClass === 'Semua' || isClassMatch(r.kelas, selectedClass))
   ).length;
   const countAlpaRecorded = dateSessionRecords.filter(
-    (r) => r.status === 'Alpa' && (selectedClass === 'Semua' || r.kelas === selectedClass)
+    (r) => r.status === 'Alpa' && (selectedClass === 'Semua' || isClassMatch(r.kelas, selectedClass))
   ).length;
 
   const totalRecorded = countHadir + countTerlambat + countIzin + countSakit + countAlpaRecorded;

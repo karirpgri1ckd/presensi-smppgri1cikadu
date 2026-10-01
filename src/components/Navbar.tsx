@@ -56,7 +56,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenLeaveRequest,
   onOpenGradeManagement,
 }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, actingAsPiket, setActingAsPiket, effectiveRole } = useAuth();
   const [isMuted, setIsMuted] = React.useState(soundService.isSoundMuted());
   const [isUserMenuOpen, setIsUserMenuOpen] = React.useState(false);
 
@@ -248,6 +248,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <div className={`w-9 h-9 rounded-xl font-black text-white flex items-center justify-center text-xs shadow-xs ring-2 transition-all shrink-0 ${
                     user.role === 'admin'
                       ? 'bg-blue-700 ring-blue-100 group-hover:ring-blue-300'
+                      : user.role === 'guru' && actingAsPiket
+                      ? 'bg-emerald-600 ring-emerald-200 group-hover:ring-emerald-300'
                       : user.role === 'guru'
                       ? 'bg-indigo-600 ring-indigo-100 group-hover:ring-indigo-300'
                       : user.role === 'ortu'
@@ -256,6 +258,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                   }`}>
                     {user.role === 'admin' ? (
                       <ShieldCheck className="w-4 h-4" />
+                    ) : user.role === 'guru' && actingAsPiket ? (
+                      <UserCheck className="w-4 h-4" />
                     ) : user.role === 'guru' ? (
                       <GraduationCap className="w-4 h-4" />
                     ) : user.role === 'ortu' ? (
@@ -275,6 +279,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                     <span className="text-[10px] font-semibold text-slate-400 truncate max-w-[120px]">
                       {user.role === 'admin' 
                         ? 'Administrator' 
+                        : user.role === 'guru' && actingAsPiket
+                        ? 'Petugas Piket'
                         : user.role === 'guru' 
                         ? (user.mapel || 'Guru') 
                         : user.role === 'ortu'
@@ -298,6 +304,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-black text-white shrink-0 shadow-sm ${
                           user.role === 'admin' 
                             ? 'bg-blue-700' 
+                            : user.role === 'guru' && actingAsPiket
+                            ? 'bg-emerald-600'
                             : user.role === 'guru' 
                             ? 'bg-indigo-600' 
                             : user.role === 'ortu'
@@ -306,6 +314,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                         }`}>
                           {user.role === 'admin' ? (
                             <ShieldCheck className="w-5 h-5" />
+                          ) : user.role === 'guru' && actingAsPiket ? (
+                            <UserCheck className="w-5 h-5" />
                           ) : user.role === 'guru' ? (
                             <GraduationCap className="w-5 h-5" />
                           ) : user.role === 'ortu' ? (
@@ -319,6 +329,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                           <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
                             user.role === 'admin'
                               ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                              : user.role === 'guru' && actingAsPiket
+                              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold'
                               : user.role === 'guru'
                               ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
                               : user.role === 'ortu'
@@ -327,6 +339,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                           }`}>
                             {user.role === 'admin' 
                               ? 'Administrator' 
+                              : user.role === 'guru' && actingAsPiket
+                              ? 'Petugas Piket (Tugas Guru)'
                               : user.role === 'guru' 
                               ? 'Guru Mapel' 
                               : user.role === 'ortu'
@@ -343,8 +357,37 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </div>
                       </div>
 
-                      {/* Account Actions */}
+                      {/* Account Actions & Teacher Piket Switcher */}
                       <div className="py-2.5 border-b border-slate-100 space-y-1.5">
+                        {/* Teacher Piket Mode Toggle Button */}
+                        {user.role === 'guru' && (
+                          actingAsPiket ? (
+                            <button
+                              onClick={() => {
+                                setIsUserMenuOpen(false);
+                                setActingAsPiket(false);
+                                setActiveTab?.('journal');
+                              }}
+                              className="w-full py-2 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                            >
+                              <GraduationCap className="w-3.5 h-3.5" />
+                              <span>Kembali ke Menu Guru</span>
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setIsUserMenuOpen(false);
+                                setActingAsPiket(true);
+                                setActiveTab?.('apel-attendance');
+                              }}
+                              className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                            >
+                              <UserCheck className="w-3.5 h-3.5" />
+                              <span>Bertindak Sebagai Petugas Piket</span>
+                            </button>
+                          )
+                        )}
+
                         {setActiveTab && (
                           <button
                             onClick={() => {

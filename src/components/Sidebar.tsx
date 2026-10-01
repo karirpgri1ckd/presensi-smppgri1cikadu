@@ -67,7 +67,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onOpenLeaveRequest,
   onOpenGradeManagement,
 }) => {
-  const { user, logout } = useAuth();
+  const { 
+    user, 
+    logout, 
+    actingAsPiket, 
+    setActingAsPiket, 
+    effectiveRole 
+  } = useAuth();
 
   // Functional Menu Grouping customized per role (Menu dipisah & dikelompokkan sesuai fungsi)
   const getMenuGroups = (): MenuGroup[] => {
@@ -122,7 +128,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     }
 
     // 2. ORANG TUA / WALI SISWA (LOGIN MODE)
-    if (user.role === 'ortu') {
+    if (effectiveRole === 'ortu') {
       return [
         {
           groupTitle: 'Portal Orang Tua / Wali',
@@ -161,11 +167,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ];
     }
 
-    // 2. PETUGAS PIKET HARIAN
-    if (user.role === 'piket') {
+    // 3. PETUGAS PIKET HARIAN (Termasuk Guru yang sedang Bertindak Sebagai Piket)
+    if (effectiveRole === 'piket') {
       return [
         {
-          groupTitle: 'Operasional Presensi Apel',
+          groupTitle: user.role === 'guru' && actingAsPiket 
+            ? 'Operasional Piket (Tugas Guru)' 
+            : 'Operasional Presensi Apel',
           items: [
             {
               id: 'apel-attendance',
@@ -250,8 +258,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
       ];
     }
 
-    // 3. GURU MATA PELAJARAN / WALI KELAS
-    if (user.role === 'guru') {
+    // 4. GURU MATA PELAJARAN / WALI KELAS (Mode Normal Guru)
+    if (effectiveRole === 'guru') {
       return [
         {
           groupTitle: 'Pembelajaran & KBM (Guru)',
@@ -552,6 +560,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-white shrink-0 shadow-xs ${
                     user.role === 'admin'
                       ? 'bg-blue-700'
+                      : user.role === 'guru' && actingAsPiket
+                      ? 'bg-emerald-600'
                       : user.role === 'guru'
                       ? 'bg-indigo-600'
                       : user.role === 'ortu'
@@ -560,6 +570,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   }`}>
                     {user.role === 'admin' ? (
                       <ShieldCheck className="w-4 h-4" />
+                    ) : user.role === 'guru' && actingAsPiket ? (
+                      <UserCheck className="w-4 h-4" />
                     ) : user.role === 'guru' ? (
                       <GraduationCap className="w-4 h-4" />
                     ) : user.role === 'ortu' ? (
@@ -574,6 +586,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       <span className={`px-2 py-0.2 rounded-full text-[9px] font-black uppercase tracking-wider ${
                         user.role === 'admin'
                           ? 'bg-blue-100 text-blue-900 border border-blue-200'
+                          : user.role === 'guru' && actingAsPiket
+                          ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 font-extrabold'
                           : user.role === 'guru'
                           ? 'bg-indigo-100 text-indigo-900 border border-indigo-200'
                           : user.role === 'ortu'
@@ -582,9 +596,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       }`}>
                         {user.role === 'admin' 
                           ? 'Administrator' 
+                          : user.role === 'guru' && actingAsPiket
+                          ? 'Petugas Piket (Tugas Guru)'
                           : user.role === 'guru' 
                           ? 'Guru Mapel' 
-                          : user.role === 'ortu'
+                          : user.role === 'ortu' 
                           ? 'Orang Tua / Wali'
                           : 'Petugas Piket'}
                       </span>
@@ -604,6 +620,60 @@ export const Sidebar: React.FC<SidebarProps> = ({
                     Ganti
                   </button>
                 </div>
+
+                {/* ROLE SWITCHER: Bertindak Sebagai Petugas Piket */}
+                {user.role === 'guru' && (
+                  <div className="pt-2">
+                    {actingAsPiket ? (
+                      <div className="p-2.5 rounded-2xl bg-emerald-50 border border-emerald-300 text-emerald-950 space-y-1.5 shadow-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase text-emerald-700">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                            Petugas Piket Aktif
+                          </span>
+                          <span className="text-[9px] font-bold bg-emerald-200/80 text-emerald-900 px-2 py-0.5 rounded-full">
+                            Penugasan
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-emerald-800 leading-tight">
+                          Anda sedang bertindak sebagai <strong>Petugas Piket</strong>. Seluruh menu presensi apel & monitoring aktif.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setActingAsPiket(false);
+                            setActiveTab('journal');
+                          }}
+                          className="w-full py-1.5 px-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-extrabold text-[11px] flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                        >
+                          <GraduationCap className="w-3.5 h-3.5" />
+                          <span>Kembali ke Menu Guru</span>
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActingAsPiket(true);
+                          setActiveTab('apel-attendance');
+                        }}
+                        className="w-full p-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-700 hover:to-teal-800 text-white font-extrabold text-xs flex items-center justify-between gap-2 transition-all cursor-pointer shadow-xs group"
+                        title="Klik untuk bertindak sebagai Petugas Piket harian sekolah"
+                      >
+                        <div className="flex items-center gap-2 text-left">
+                          <div className="p-1 rounded-lg bg-white/20 text-white group-hover:scale-110 transition-transform">
+                            <UserCheck className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="text-xs font-black leading-tight">Bertindak Petugas Piket</div>
+                            <div className="text-[10px] text-emerald-100 font-normal">Operasional presensi apel & kiosk</div>
+                          </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-emerald-200 group-hover:translate-x-0.5 transition-transform" />
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-2xl space-y-1.5">

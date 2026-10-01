@@ -28,7 +28,7 @@ export const RoleSessionBanner: React.FC<RoleSessionBannerProps> = ({
   onOpenSettings,
   setActiveTab,
 }) => {
-  const { user, logout } = useAuth();
+  const { user, logout, actingAsPiket, setActingAsPiket } = useAuth();
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
   if (!user) {
@@ -48,8 +48,10 @@ export const RoleSessionBanner: React.FC<RoleSessionBannerProps> = ({
       bg: 'bg-gradient-to-r from-emerald-950 via-teal-950 to-slate-900 text-white border-emerald-800',
       badgeBg: 'bg-emerald-500/20 text-emerald-200 border-emerald-400/40',
       icon: UserCheck,
-      title: 'Petugas Piket Presensi',
-      desc: 'Bertugas mengoperasikan scanner kiosk, monitoring kehadiran pagi/siang, dan penyesuaian izin/sakit siswa.',
+      title: user.role === 'guru' && actingAsPiket ? 'Petugas Piket (Tugas Guru)' : 'Petugas Piket Presensi',
+      desc: user.role === 'guru' && actingAsPiket
+        ? 'Anda sedang bertindak sebagai Petugas Piket. Memiliki akses operasional scanner kiosk, apel pagi & siang, dan verifikasi izin/sakit.'
+        : 'Bertugas mengoperasikan scanner kiosk, monitoring kehadiran pagi/siang, dan penyesuaian izin/sakit siswa.',
       accent: 'text-emerald-300',
     },
     guru: {
@@ -72,7 +74,8 @@ export const RoleSessionBanner: React.FC<RoleSessionBannerProps> = ({
     },
   };
 
-  const currentConfig = roleStyles[user.role] || roleStyles.admin;
+  const activeRoleKey = user.role === 'guru' && actingAsPiket ? 'piket' : user.role;
+  const currentConfig = roleStyles[activeRoleKey] || roleStyles.admin;
   const RoleIcon = currentConfig.icon;
 
   return (
@@ -134,7 +137,35 @@ export const RoleSessionBanner: React.FC<RoleSessionBannerProps> = ({
               <span>Ganti Akun</span>
             </button>
 
-            {/* Quick Context Shortcut */}
+            {/* Quick Context Shortcut & Teacher Piket Switcher */}
+            {user.role === 'guru' && (
+              actingAsPiket ? (
+                <button
+                  onClick={() => {
+                    setActingAsPiket(false);
+                    setActiveTab?.('journal');
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black ring-2 ring-emerald-300 transition-all shadow-xs cursor-pointer animate-pulse"
+                  title="Klik untuk kembali ke peran Guru Pengajar"
+                >
+                  <GraduationCap className="w-3.5 h-3.5" />
+                  <span>Mode Piket Aktif (Kembali ke Guru)</span>
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    setActingAsPiket(true);
+                    setActiveTab?.('apel-attendance');
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600/90 hover:bg-emerald-600 text-white text-xs font-bold border border-emerald-400/60 transition-all shadow-xs cursor-pointer"
+                  title="Klik untuk bertindak sebagai Petugas Piket Presensi"
+                >
+                  <UserCheck className="w-3.5 h-3.5 text-emerald-200" />
+                  <span>Bertindak Sebagai Piket</span>
+                </button>
+              )
+            )}
+
             {user.role === 'ortu' && setActiveTab && (
               <button
                 onClick={() => setActiveTab('pantau-anak')}
@@ -146,7 +177,7 @@ export const RoleSessionBanner: React.FC<RoleSessionBannerProps> = ({
               </button>
             )}
 
-            {user.role === 'guru' && setActiveTab && (
+            {user.role === 'guru' && !actingAsPiket && setActiveTab && (
               <button
                 onClick={() => setActiveTab('journal')}
                 className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
@@ -157,14 +188,14 @@ export const RoleSessionBanner: React.FC<RoleSessionBannerProps> = ({
               </button>
             )}
 
-            {user.role === 'piket' && setActiveTab && (
+            {(user.role === 'piket' || (user.role === 'guru' && actingAsPiket)) && setActiveTab && (
               <button
-                onClick={() => setActiveTab('kiosk')}
+                onClick={() => setActiveTab('apel-attendance')}
                 className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all shadow-xs cursor-pointer"
-                title="Buka Pindai Kartu"
+                title="Buka Absensi Apel Petugas"
               >
-                <QrCode className="w-3.5 h-3.5" />
-                <span>Pindai Kartu</span>
+                <UserCheck className="w-3.5 h-3.5" />
+                <span>Absensi Apel</span>
               </button>
             )}
 

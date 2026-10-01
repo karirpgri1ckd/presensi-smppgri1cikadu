@@ -46,7 +46,7 @@ import { MobileBottomNav } from './components/MobileBottomNav';
 import { BellRing, ShieldCheck, LogIn, CalendarDays, Sparkles } from 'lucide-react';
 
 function AppContent() {
-  const { user } = useAuth();
+  const { user, actingAsPiket, effectiveRole } = useAuth();
   const [activeTab, setActiveTab] = useState<string>('kiosk');
   const [isSidebarOpen, setIsSidebarOpen] = useState<boolean>(false);
   
@@ -77,24 +77,24 @@ function AppContent() {
   const prevSessionRef = useRef<AttendanceSession>('Pagi');
   const prevUserRoleRef = useRef<string | null>(null);
 
-  // Auto switch tab when role changes
+  // Auto switch tab when effective role changes
   useEffect(() => {
-    const currentRole = user ? user.role : 'public';
+    const currentRole = effectiveRole;
     if (prevUserRoleRef.current !== null && prevUserRoleRef.current !== currentRole) {
-      if (!user) {
+      if (currentRole === 'public') {
         setActiveTab('kiosk');
-      } else if (user.role === 'ortu') {
+      } else if (currentRole === 'ortu') {
         setActiveTab('pantau-anak');
-      } else if (user.role === 'guru') {
+      } else if (currentRole === 'guru') {
         setActiveTab('journal');
-      } else if (user.role === 'piket') {
+      } else if (currentRole === 'piket') {
         setActiveTab('apel-attendance');
-      } else if (user.role === 'admin') {
+      } else if (currentRole === 'admin') {
         setActiveTab('dashboard');
       }
     }
     prevUserRoleRef.current = currentRole;
-  }, [user]);
+  }, [effectiveRole]);
 
   // Load all initial data from database service
   const loadAllData = useCallback(async () => {

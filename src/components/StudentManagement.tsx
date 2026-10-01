@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import * as XLSX from 'xlsx';
 import { 
   Users, 
@@ -29,6 +29,13 @@ import { exportStudentTemplateExcel } from '../utils/exportExcel';
 import { generateStudentListPdf } from '../utils/exportPdf';
 import { useAuth } from '../context/AuthContext';
 import { SchoolLogo } from '../assets/schoolLogo';
+import { 
+  filterStudentsForTeacher, 
+  getTeacherAccessibleClasses, 
+  isClassMatch, 
+  isTeacherWaliKelas, 
+  normalizeClassName 
+} from '../utils/teacherFilter';
 
 interface StudentManagementProps {
   students: Student[];
@@ -45,7 +52,8 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   onBulkSaveStudents,
   schoolConfig,
 }) => {
-  const { user } = useAuth();
+  const { user, actingAsPiket } = useAuth();
+  const isTeacher = user?.role === 'guru' && !actingAsPiket;
 
   // Filter State
   const [selectedClass, setSelectedClass] = useState<string>('Semua');
@@ -66,17 +74,36 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
   const [importStatus, setImportStatus] = useState<string | null>(null);
   const [modalError, setModalError] = useState<string | null>(null);
 
-  const classesList = Array.from(new Set(students.map((s) => s.kelas))).sort();
+  // Scoped students based on user role and teacher assignments
+  const scopedStudents = useMemo(() => {
+    return filterStudentsForTeacher(students, user, actingAsPiket);
+  }, [students, user, actingAsPiket]);
+
+  const teacherAccessibleClasses = useMemo(() => {
+    return isTeacher ? getTeacherAccessibleClasses(user) : [];
+  }, [isTeacher, user]);
+
+  const classesList = useMemo(() => {
+    return Array.from(new Set(scopedStudents.map((s) => s.kelas))).sort();
+  }, [scopedStudents]);
 
   // Filtered Students
-  const filteredStudents = students.filter((s) => {
-    if (selectedClass !== 'Semua' && s.kelas !== selectedClass) return false;
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      return s.nama.toLowerCase().includes(q) || s.nisn.includes(q);
-    }
-    return true;
-  });
+  const filteredStudents = useMemo(() => {
+    return scopedStudents.filter((s) => {
+      if (selectedClass !== 'Semua') {
+        if (selectedClass === 'WALI_KELAS') {
+          if (!isTeacherWaliKelas(user, s.kelas)) return false;
+        } else if (!isClassMatch(s.kelas, selectedClass)) {
+          return false;
+        }
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        return s.nama.toLowerCase().includes(q) || s.nisn.includes(q);
+      }
+      return true;
+    });
+  }, [scopedStudents, selectedClass, searchQuery, user]);
 
   // Modal Handlers
   const handleOpenAddStudent = () => {
@@ -84,7 +111,7 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
     setFormNisn('');
     setFormNama('');
     setFormJk('L');
-    setFormKelas('7A');
+    setFormKelas(classesList[0] || '9A');
     setFormPhone('');
     setFormFotoUrl('');
     setModalError(null);
@@ -223,7 +250,11 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
             <div className="flex items-center gap-2 mb-1">
               <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                 <Users className="w-5 h-5 text-blue-600" />
-                <span>Data Pokok Siswa ({students.length} Siswa)</span>
+                <span>
+                  {isTeacher 
+                    ? `Data Siswa Binaan (${scopedStudents.length} Siswa)` 
+                    : `Data Pokok Siswa (${students.length} Siswa)`}
+                </span>
               </h2>
               <span className="px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-blue-100 text-blue-900 border border-blue-200">
                 Dapodik Sekolah
@@ -353,12 +384,21 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
             <select
               value={selectedClass}
               onChange={(e) => setSelectedClass(e.target.value)}
-              className="bg-transparent font-bold text-slate-700 focus:outline-hidden"
+              className="bg-transparent font-bold text-slate-700 focus:outline-hidden cursor-pointer"
             >
-              <option value="Semua">Semua Kelas ({students.length})</option>
+              <option value="Semua">
+                {isTeacher 
+                  ? `Semua Rombel Binaan (${scopedStudents.length})` 
+                  : `Semua Kelas (${students.length})`}
+              </option>
+              {isTeacher && user?.waliKelas && (
+                <option value="WALI_KELAS">
+                  ⭐ Khusus Kelas Wali Kelas ({user.waliKelas})
+                </option>
+              )}
               {classesList.map((c) => (
                 <option key={c} value={c}>
-                  Kelas {c} ({students.filter((s) => s.kelas === c).length})
+                  Kelas {c} ({scopedStudents.filter((s) => isClassMatch(s.kelas, c)).length} Siswa) {isTeacher && isTeacherWaliKelas(user, c) ? '★ Wali Kelas' : ''}
                 </option>
               ))}
             </select>
@@ -451,9 +491,17 @@ export const StudentManagement: React.FC<StudentManagementProps> = ({
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded-md bg-slate-100 font-extrabold text-slate-700">
-                        {s.kelas}
-                      </span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 font-extrabold text-slate-700">
+                          {s.kelas}
+                        </span>
+                        {isTeacher && isTeacherWaliKelas(user, s.kelas) && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md text-[9px] font-black bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs">
+                            <Sparkles className="w-2.5 h-2.5 text-amber-700" />
+                            <span>Wali Kelas</span>
+                          </span>
+                        )}
+                      </div>
                     </td>
                     <td className="py-3 px-4 text-slate-500 font-mono text-[11px]">
                       {s.nomorTeleponOrtu || '-'}

@@ -35,6 +35,7 @@ import { generateTeachingJournalsPdf } from '../utils/exportPdf';
 import { useAuth } from '../context/AuthContext';
 import { soundService } from '../utils/audio';
 import { SchoolLogo } from '../assets/schoolLogo';
+import { getTeacherAccessibleClasses, isClassMatch, normalizeClassName } from '../utils/teacherFilter';
 
 interface TeachingJournalProps {
   journals: TeachingJournal[];
@@ -114,6 +115,8 @@ export const TeachingJournalComponent: React.FC<TeachingJournalProps> = ({
   };
 
   const classesList = Array.from(new Set(students.map((s) => s.kelas))).sort();
+  const teacherAccessibleClasses = user?.role === 'guru' ? getTeacherAccessibleClasses(user) : [];
+  const displayClasses = teacherAccessibleClasses.length > 0 ? teacherAccessibleClasses : classesList;
 
   // Class students for selected formKelas
   const currentClassStudents = students.filter((s) => s.kelas === formKelas);
@@ -720,8 +723,8 @@ export const TeachingJournalComponent: React.FC<TeachingJournalProps> = ({
         >
           Semua Kelas ({journals.length})
         </button>
-        {classesList.map((c) => {
-          const count = journals.filter((j) => j.kelas === c).length;
+        {displayClasses.map((c) => {
+          const count = journals.filter((j) => isClassMatch(j.kelas, c)).length;
           return (
             <button
               key={c}

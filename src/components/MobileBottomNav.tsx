@@ -24,14 +24,14 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
   onOpenLeaveModal,
   pendingLeaveCount,
 }) => {
-  const { user } = useAuth();
+  const { user, effectiveRole } = useAuth();
 
   return (
     <div className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/80 shadow-lg px-2 py-1.5 md:hidden no-print">
       <div className="flex items-center justify-around">
         
         {/* Tab 1: Role-tailored Attendance Action */}
-        {user?.role === 'guru' ? (
+        {effectiveRole === 'guru' ? (
           <button
             type="button"
             onClick={() => setActiveTab('journal')}
@@ -46,7 +46,7 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
             </div>
             <span className="text-[10px] mt-0.5">KBM Guru</span>
           </button>
-        ) : user?.role === 'piket' ? (
+        ) : effectiveRole === 'piket' ? (
           <button
             type="button"
             onClick={() => setActiveTab('apel-attendance')}
