@@ -1,0 +1,10 @@
+{
+  "name": "Absensi SMP PGRI 1 Cikadu",
+  "description": "Sistem Presensi Digital, Kiosk QR Scanner, Jurnal Mengajar Guru, dan Portal Pantau Anak SMP PGRI 1 Cikadu.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
