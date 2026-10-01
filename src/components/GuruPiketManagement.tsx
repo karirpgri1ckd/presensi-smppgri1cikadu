@@ -842,18 +842,24 @@ export const GuruPiketManagement: React.FC<GuruPiketManagementProps> = ({
 
             {/* Printable Document Content */}
             <div className="p-6 sm:p-8 overflow-y-auto bg-white text-slate-900 space-y-6">
-              {/* Kop Surat */}
-              <div className="border-b-2 border-slate-900 pb-4 flex items-center gap-4 text-center">
-                <SchoolLogo src={schoolConfig?.logoUrl} className="w-16 h-16 shrink-0" />
+              {/* Kop Surat Resmi */}
+              <div className="border-b-2 border-slate-900 pb-3 flex items-center gap-4 text-center">
+                <SchoolLogo src={schoolConfig?.logoUrl} className="w-18 h-18 shrink-0" />
                 <div className="flex-1">
-                  <h2 className="font-serif font-black text-lg sm:text-xl tracking-wide uppercase text-slate-900">
-                    PEMERINTAH KABUPATEN {schoolConfig.kota?.toUpperCase()}
-                  </h2>
-                  <h1 className="font-serif font-black text-xl sm:text-2xl text-slate-900 tracking-tight uppercase">
-                    {schoolConfig.namaSekolah}
+                  <p className="font-bold text-xs sm:text-sm tracking-wide uppercase text-slate-900 leading-tight">
+                    PERWAKILAN YAYASAN PEMBINA LEMBAGA PENDIDIKAN
+                  </p>
+                  <p className="font-bold text-xs sm:text-sm tracking-wide uppercase text-slate-900 leading-tight">
+                    PERSATUAN GURU REPUBLIK INDONESIA (YPLP PGRI) KABUPATEN CIANJUR
+                  </p>
+                  <h1 className="font-black text-xl sm:text-2xl text-slate-900 tracking-tight uppercase mt-1">
+                    {schoolConfig.namaSekolah || 'SMP PGRI 1 CIKADU'}
                   </h1>
-                  <p className="text-xs text-slate-600 font-sans mt-0.5">
-                    NPSN: {schoolConfig.npsn} • {schoolConfig.alamat} • Kontak: {schoolConfig.kontak}
+                  <p className="text-xs text-slate-700 font-sans mt-0.5">
+                    {schoolConfig.alamat || 'Kp. Koleberes Blok D RT. 04 RW. 09 Desa Cikadu Kec. Cikadu Kab. Cianjur'}
+                  </p>
+                  <p className="text-xs text-slate-700 font-sans">
+                    Telp: 0852 1258 7750 | e-mail: smp.pgri1ckd@gmail.com | NPSN: {schoolConfig.npsn || '69919136'}
                   </p>
                 </div>
               </div>
@@ -929,21 +935,24 @@ export const GuruPiketManagement: React.FC<GuruPiketManagementProps> = ({
                 </table>
               </div>
 
-              {/* Tanda Tangan */}
+              {/* Tanda Tangan: Kepala Sekolah di Kiri, Koordinator Piket di Kanan */}
               <div className="pt-6 grid grid-cols-2 gap-8 text-center text-xs">
+                {/* Kolom Kiri: Kepala Sekolah */}
                 <div>
-                  <p className="text-slate-500">Mengetahui,</p>
+                  <p className="text-slate-600">Mengetahui,</p>
+                  <p className="font-bold text-slate-900">Kepala {schoolConfig.namaSekolah || 'SMP PGRI 1 CIKADU'}</p>
+                  <div className="h-16" />
+                  <p className="font-black text-slate-900 underline uppercase">{schoolConfig.namaKepsek || 'CUNCUN MUHLISOH, S.Pd.'}</p>
+                  <p className="text-slate-500 font-mono text-[10px]">NIP/NUPTK: {schoolConfig.nipKepsek || '-'}</p>
+                </div>
+
+                {/* Kolom Kanan: Koordinator Guru Piket */}
+                <div>
+                  <p className="text-slate-600">{schoolConfig.kota || 'Cianjur'}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                   <p className="font-bold text-slate-900">Koordinator Guru Piket</p>
                   <div className="h-16" />
-                  <p className="font-black text-slate-900 underline">{schoolConfig.namaPetugasPiket || 'Hj. Siti Maryam, S.Pd.'}</p>
-                  <p className="text-slate-500 font-mono text-[10px]">NIP: {schoolConfig.nipPetugasPiket || '-'}</p>
-                </div>
-                <div>
-                  <p className="text-slate-500">{schoolConfig.kota}, {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                  <p className="font-bold text-slate-900">Kepala {schoolConfig.namaSekolah}</p>
-                  <div className="h-16" />
-                  <p className="font-black text-slate-900 underline">{schoolConfig.namaKepsek}</p>
-                  <p className="text-slate-500 font-mono text-[10px]">NIP: {schoolConfig.nipKepsek}</p>
+                  <p className="font-black text-slate-900 underline uppercase">{schoolConfig.namaPetugasPiket || 'AI SITI ROSITA'}</p>
+                  <p className="text-slate-500 font-mono text-[10px]">NIP/NUPTK: {schoolConfig.nipPetugasPiket || '-'}</p>
                 </div>
               </div>
             </div>
