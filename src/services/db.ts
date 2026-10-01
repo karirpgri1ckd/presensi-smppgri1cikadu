@@ -36,14 +36,14 @@ import { SCHOOL_LOGO_PNG_DATA_URL } from '../assets/schoolLogo';
 // Default initial config for SMP PGRI 1 CIKADU
 export const DEFAULT_SCHOOL_CONFIG: SchoolConfig = {
   namaSekolah: 'SMP PGRI 1 CIKADU',
-  npsn: '20252150',
-  kota: 'Kabupaten Cianjur',
-  alamat: 'Jl. Raya Cikadu No. 1, Cikadu, Kec. Cikadu, Kab. Cianjur, Jawa Barat 43284',
-  kontak: '(0263) 2345678 | smp.pgri1ckd@gmail.com',
-  namaKepsek: 'H. Dadang Suryana, S.Pd., M.M.',
-  nipKepsek: '19680512 199403 1 004',
-  namaPetugasPiket: 'Hj. Siti Maryam, S.Pd.',
-  nipPetugasPiket: '19750918 200501 2 006',
+  npsn: '69919136',
+  kota: 'Cianjur',
+  alamat: 'Kp. Koleberes Blok D RT. 04 RW. 09 Desa Cikadu Kec. Cikadu Kab. Cianjur',
+  kontak: 'Telp: 0852 1258 7750 | e-mail: smp.pgri1ckd@gmail.com | NPSN: 69919136',
+  namaKepsek: 'CUNCUN MUHLISOH, S.Pd.',
+  nipKepsek: '-',
+  namaPetugasPiket: 'AI SITI ROSITA',
+  nipPetugasPiket: '-',
   logoUrl: SCHOOL_LOGO_PNG_DATA_URL,
   sistemHariSekolah: '6_HARI',
   jadwal: {
