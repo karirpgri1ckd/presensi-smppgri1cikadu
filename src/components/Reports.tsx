@@ -69,6 +69,16 @@ export const Reports: React.FC<ReportsProps> = ({
     }
   }, [initialReportType]);
 
+  React.useEffect(() => {
+    if (user?.role === 'guru' && user.nama) {
+      setSelectedTeacher(user.nama);
+      if (user.mapel) {
+        setSelectedMapel(user.mapel);
+      }
+      setReportType('kbm');
+    }
+  }, [user]);
+
   // Common Filters
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const [filterMode, setFilterMode] = useState<'bulan' | 'tanggal'>('bulan');
@@ -110,6 +120,31 @@ export const Reports: React.FC<ReportsProps> = ({
     });
     return Array.from(set).sort();
   }, [journals, teachers]);
+
+  // If user is a guru, prioritize/limit to their specific subjects
+  const teacherMapelList = useMemo(() => {
+    if (user?.role === 'guru') {
+      const set = new Set<string>();
+      if (user.mapel) set.add(user.mapel);
+      user.penugasanMapel?.forEach((p) => { if (p.mapel) set.add(p.mapel); });
+      journals.forEach((j) => {
+        if (j.guruNama?.toLowerCase() === user.nama?.toLowerCase() && j.mapel) {
+          set.add(j.mapel);
+        }
+      });
+      const list = Array.from(set).sort();
+      return list.length > 0 ? list : mapelList;
+    }
+    return mapelList;
+  }, [user, journals, mapelList]);
+
+  const currentTeacherObj = useMemo(() => {
+    const targetName = user?.role === 'guru' ? user.nama : selectedTeacher;
+    if (targetName === 'Semua') return null;
+    return teachers.find(
+      (t) => t.nama.toLowerCase() === targetName.toLowerCase() || t.username === targetName
+    ) || null;
+  }, [user, selectedTeacher, teachers]);
 
   // Calculate Target HEB for selected month
   const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
@@ -215,26 +250,36 @@ export const Reports: React.FC<ReportsProps> = ({
   // 2. DATA COMPUTATION FOR REPORT 2: ABSENSI PEMBELAJARAN (KBM)
   // =========================================================
   const kbmJournals = useMemo(() => {
+    const targetGuru = user?.role === 'guru' ? user.nama : selectedTeacher;
+
     return journals.filter((j) => {
-      if (!j.tanggal.startsWith(monthPrefix)) return false;
+      if (filterMode === 'bulan') {
+        if (!j.tanggal.startsWith(monthPrefix)) return false;
+      } else {
+        if (j.tanggal < activeStartDate || j.tanggal > activeEndDate) return false;
+      }
       if (selectedMapel !== 'Semua' && j.mapel.toLowerCase() !== selectedMapel.toLowerCase()) return false;
-      if (selectedTeacher !== 'Semua' && j.guruNama !== selectedTeacher && j.guruId !== selectedTeacher) return false;
+      if (targetGuru !== 'Semua' && j.guruNama.toLowerCase() !== targetGuru.toLowerCase() && j.guruId !== targetGuru) return false;
       if (selectedClass !== 'Semua' && j.kelas !== selectedClass) return false;
       return true;
     });
-  }, [journals, monthPrefix, selectedMapel, selectedTeacher, selectedClass]);
+  }, [journals, filterMode, monthPrefix, activeStartDate, activeEndDate, selectedMapel, user, selectedTeacher, selectedClass]);
 
   const kbmClassRecords = useMemo(() => {
     return records.filter((r) => {
       // Must be KELAS / PEMBELAJARAN
       const isKbm = r.kategori === 'KELAS' || r.kategori === 'PEMBELAJARAN' || r.id.startsWith('PRESENSI_KBM_') || !!r.mapel;
       if (!isKbm) return false;
-      if (!r.tanggal.startsWith(monthPrefix)) return false;
+      if (filterMode === 'bulan') {
+        if (!r.tanggal.startsWith(monthPrefix)) return false;
+      } else {
+        if (r.tanggal < activeStartDate || r.tanggal > activeEndDate) return false;
+      }
       if (selectedMapel !== 'Semua' && r.mapel?.toLowerCase() !== selectedMapel.toLowerCase()) return false;
       if (selectedClass !== 'Semua' && r.kelas !== selectedClass) return false;
       return true;
     });
-  }, [records, monthPrefix, selectedMapel, selectedClass]);
+  }, [records, filterMode, monthPrefix, activeStartDate, activeEndDate, selectedMapel, selectedClass]);
 
   const totalKbmPertemuan = kbmJournals.length;
 
@@ -365,6 +410,12 @@ export const Reports: React.FC<ReportsProps> = ({
     showNotice('Menyusun PDF Rekapitulasi Presensi KBM Siswa...', 'info');
     setTimeout(() => {
       try {
+        const teacherInfo = {
+          nama: user?.role === 'guru' ? user.nama : (selectedTeacher !== 'Semua' ? selectedTeacher : (journals[0]?.guruNama || 'Guru Mata Pelajaran')),
+          nip: (user?.role === 'guru' ? user.nip : currentTeacherObj?.nip) || '-',
+          mapel: user?.role === 'guru' ? (selectedMapel !== 'Semua' ? selectedMapel : (user.mapel || '')) : (selectedMapel !== 'Semua' ? selectedMapel : ''),
+        };
+
         generateLearningRecapPdf(
           students,
           records,
@@ -374,7 +425,8 @@ export const Reports: React.FC<ReportsProps> = ({
           selectedClass,
           monthNames[selectedMonth],
           selectedYear,
-          schoolConfig
+          schoolConfig,
+          teacherInfo
         );
         showNotice(`Dokumen PDF Rekap KBM (${selectedMapel} - ${monthNames[selectedMonth]} ${selectedYear}) berhasil diunduh!`);
       } catch (e) {
@@ -391,6 +443,12 @@ export const Reports: React.FC<ReportsProps> = ({
     showNotice('Menyusun PDF Buku Agenda Catatan Jurnal KBM Guru...', 'info');
     setTimeout(() => {
       try {
+        const teacherInfo = {
+          nama: user?.role === 'guru' ? user.nama : (selectedTeacher !== 'Semua' ? selectedTeacher : (journals[0]?.guruNama || 'Guru Mata Pelajaran')),
+          nip: (user?.role === 'guru' ? user.nip : currentTeacherObj?.nip) || '-',
+          mapel: user?.role === 'guru' ? (selectedMapel !== 'Semua' ? selectedMapel : (user.mapel || '')) : (selectedMapel !== 'Semua' ? selectedMapel : ''),
+        };
+
         generateTeachingJournalsPdf(
           journals,
           schoolConfig,
@@ -398,7 +456,8 @@ export const Reports: React.FC<ReportsProps> = ({
           selectedClass,
           selectedMapel,
           monthNames[selectedMonth],
-          selectedYear
+          selectedYear,
+          teacherInfo
         );
         showNotice(`Dokumen PDF Buku Agenda Jurnal Mengajar (${selectedClass} - ${monthNames[selectedMonth]} ${selectedYear}) berhasil diunduh!`);
       } catch (e) {
@@ -621,8 +680,8 @@ export const Reports: React.FC<ReportsProps> = ({
                     onChange={(e) => setSelectedMapel(e.target.value)}
                     className="bg-transparent text-xs font-extrabold text-slate-800 focus:outline-hidden cursor-pointer max-w-[200px] truncate"
                   >
-                    <option value="Semua">Semua Mata Pelajaran</option>
-                    {mapelList.map((m) => (
+                    <option value="Semua">{user?.role === 'guru' ? 'Semua Mapel Saya' : 'Semua Mata Pelajaran'}</option>
+                    {teacherMapelList.map((m) => (
                       <option key={m} value={m}>{m}</option>
                     ))}
                   </select>
@@ -631,16 +690,22 @@ export const Reports: React.FC<ReportsProps> = ({
                 {/* Filter Guru */}
                 <div className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5">
                   <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
-                  <select
-                    value={selectedTeacher}
-                    onChange={(e) => setSelectedTeacher(e.target.value)}
-                    className="bg-transparent text-xs font-extrabold text-slate-800 focus:outline-hidden cursor-pointer max-w-[180px] truncate"
-                  >
-                    <option value="Semua">Semua Guru</option>
-                    {teachers.map((t) => (
-                      <option key={t.id} value={t.nama}>{t.nama}</option>
-                    ))}
-                  </select>
+                  {user?.role === 'guru' ? (
+                    <div className="text-xs font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded-lg max-w-[220px] truncate">
+                      Guru: <span className="font-black">{user.nama}</span>
+                    </div>
+                  ) : (
+                    <select
+                      value={selectedTeacher}
+                      onChange={(e) => setSelectedTeacher(e.target.value)}
+                      className="bg-transparent text-xs font-extrabold text-slate-800 focus:outline-hidden cursor-pointer max-w-[180px] truncate"
+                    >
+                      <option value="Semua">Semua Guru</option>
+                      {teachers.map((t) => (
+                        <option key={t.id} value={t.nama}>{t.nama}</option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </>
             )}

@@ -108,6 +108,22 @@ export const INITIAL_STUDENTS: Student[] = [
 
 export const INITIAL_TEACHERS: TeacherUser[] = [
   {
+    id: 'T_SURYADI',
+    nip: '-',
+    nama: 'SURYADI',
+    username: 'suryadi',
+    password: 'edudigital',
+    role: 'guru',
+    mapel: 'Pendidikan Pancasila',
+    waliKelas: '9A',
+    nomorHp: '085212587750',
+    status: 'Aktif',
+    penugasanMapel: [
+      { id: 'ASGN_SURYADI_1', mapel: 'Pendidikan Pancasila', kelas: ['7A', '7B', '8A', '8B', '9A', '9B', 'KELAS IX-A'], bebanJam: 18 },
+    ],
+    totalJamMengajar: 18,
+  },
+  {
     id: 'T1',
     nip: '19750918 200501 2 006',
     nama: 'Hj. Siti Maryam, S.Pd.',
